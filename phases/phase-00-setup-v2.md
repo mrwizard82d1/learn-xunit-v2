@@ -147,7 +147,7 @@ These are pure domain code — no xUnit dependencies, no framework references. T
 
 After copying, run `dotnet build src/Ledger/` to confirm the production project builds clean against .NET 10 + no framework deps. Success here means a **clean build** (compiles, no errors) — there are no tests to run yet; `src/Ledger` is pure domain code. Test execution doesn't start until Step 6. The build should succeed trivially.
 
-### Step 5 — Write the smoke test  `[ ]`
+### Step 5 — Write the smoke test  `[x]`
 
 Create `tests/Ledger.Tests/SmokeTest.cs`:
 
