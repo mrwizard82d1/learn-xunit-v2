@@ -25,7 +25,7 @@ Stand up the v2-correct project, port the Ledger domain code from the v3 project
 
 ## Steps
 
-### Step 1 — Create the solution structure  `[ ]`
+### Step 1 — Create the solution structure  `[x]`
 
 In `~/professional/projects/learn-xunit-v2/` (already exists, with `LICENSE` and `README.md`), you want this layout:
 
@@ -43,12 +43,31 @@ learn-xunit-v2/
         └── Ledger.Tests.csproj
 ```
 
-Copy `global.json` directly from `~/professional/projects/learn-xunit/` — same .NET 10 pin.
+Copy `global.json` from `~/professional/projects/learn-xunit/` — same .NET 10 SDK pin — **but delete the `test` block before saving.** The v3 file contains:
+
+```json
+"test": {
+    "runner": "Microsoft.Testing.Platform"
+}
+```
+
+That block opts `dotnet test` into the MTP execution path, which is exactly what v2 (VSTest via `xunit.runner.visualstudio`) does *not* use — leaving it in can make `dotnet test` fail to discover or run tests. The v2 `global.json` should contain only the `sdk` section:
+
+```json
+{
+    "sdk": {
+        "version": "10.0.107",
+        "rollForward": "latestFeature"
+    }
+}
+```
+
+(`rollForward: latestFeature` means the floor is `10.0.107` but any installed `10.0.1xx` SDK ≥ that — e.g. `10.0.109` — satisfies it. Keep the floor low for portability; don't bump it to whatever you happen to have installed.)
 
 CLI commands to run yourself when you're ready:
 
 ```
-dotnet new sln -n Ledger
+dotnet new sln -n Ledger --format sln
 dotnet new classlib -n Ledger -o src/Ledger
 dotnet new xunit -n Ledger.Tests -o tests/Ledger.Tests
 dotnet sln add src/Ledger tests/Ledger.Tests
@@ -59,6 +78,7 @@ Two important version-of-things-changing-on-me notes:
 
 - **`dotnet new xunit`** (no `3`) — the v2 template. Generates an `xunit` 2.x csproj using `xunit.runner.visualstudio` + `Microsoft.NET.Test.Sdk`. Compare to `dotnet new xunit3` from the v3 project — different template, different generated file.
 - **`dotnet new classlib`** — `OutputType` defaults to `Library`. Leave it. No `Exe`, no MTP toggles.
+- **`--format sln`** — .NET 10's `dotnet new sln` defaults to the new `.slnx` (XML) format. Forcing classic `.sln` because Rider's `.slnx` support is still rough under Gateway/Remote Development. Drop the flag once Rider's remote `.slnx` handling is solid.
 
 After running these, verify both csproj files have `<Nullable>enable</Nullable>` and `<ImplicitUsings>enable</ImplicitUsings>`. The standard templates usually include both.
 
