@@ -168,7 +168,7 @@ Identical to the v3 tutorial's smoke. xUnit's `[Fact]` and `Assert.Equal` have t
 
 Delete the `UnitTest1.cs` placeholder that the `dotnet new xunit` template generates.
 
-### Step 6 — Verify  `[ ]`
+### Step 6 — Verify  `[x]`
 
 From the project root:
 
