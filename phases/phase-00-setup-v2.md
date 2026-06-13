@@ -109,7 +109,7 @@ Also worth checking — the template's `xunit.runner.visualstudio` and `Microsof
 
 Record the exact versions in the **Decisions made** section above once you know what landed.
 
-### Step 3 — Configure `xunit.runner.json` (with `showLiveOutput`)  `[ ]`
+### Step 3 — Configure `xunit.runner.json` (with `showLiveOutput`)  `[x]`
 
 Copy `xunit.runner.json` from `~/professional/projects/learn-xunit/tests/Ledger.Tests/` — same file as the v3 project.
 
