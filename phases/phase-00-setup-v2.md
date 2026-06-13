@@ -20,6 +20,11 @@ Stand up the v2-correct project, port the Ledger domain code from the v3 project
 - **.NET 10 pinned via `global.json`.** Same as the v3 project. Reproducible across machine reinstalls.
 - **Reuse the v3 tutorial's domain code unchanged.** `Money`, `CurrencyCode`, `Account`, `AccountRepository` all v2-compatible without modification; the framework boundary doesn't affect production code.
 - **`OutputType=Library` (not `Exe`).** v3+MTP required `Exe`; v2+VSTest uses the standard `Library` shape. Less csproj fiddling.
+- **Landed package versions** (from the `dotnet new xunit` template on SDK 10.0.109; no manual bumps needed — `xunit` already came in at the 2.9.3 target):
+  - `xunit` **2.9.3**
+  - `xunit.runner.visualstudio` **3.1.4**
+  - `Microsoft.NET.Test.Sdk` **17.14.1**
+  - `coverlet.collector` **6.0.4** (template extra; harmless, left in place)
 
 ---
 
@@ -84,7 +89,7 @@ After running these, verify both csproj files have `<Nullable>enable</Nullable>`
 
 Delete the `Class1.cs` placeholder that `dotnet new classlib` generates in `src/Ledger/`.
 
-### Step 2 — Pin xUnit to 2.9.3  `[ ]`
+### Step 2 — Pin xUnit to 2.9.3  `[x]`
 
 The `dotnet new xunit` template pins a specific version; verify and adjust to 2.9.3 if needed.
 
