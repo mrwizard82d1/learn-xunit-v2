@@ -134,7 +134,7 @@ Add to `Ledger.Tests.csproj` so it gets copied to output:
 
 We're flipping `showLiveOutput` on from the start to validate that v2+VSTest gives you what v3+MTP didn't — visible `ITestOutputHelper` output even during passing runs. This is one of the small "yes, the tools work here" moments worth experiencing early.
 
-### Step 4 — Port the production code from v3  `[ ]`
+### Step 4 — Port the production code from v3  `[x]`
 
 Copy these files from `~/professional/projects/learn-xunit/src/Ledger/` to `~/professional/projects/learn-xunit-v2/src/Ledger/`:
 
@@ -145,7 +145,7 @@ Copy these files from `~/professional/projects/learn-xunit/src/Ledger/` to `~/pr
 
 These are pure domain code — no xUnit dependencies, no framework references. They run identically against either v2 or v3 tests. No edits needed; the namespace (`Ledger`) is the same.
 
-After copying, run `dotnet build src/Ledger/` to confirm the production project builds clean against .NET 10 + no framework deps. Should be trivially green.
+After copying, run `dotnet build src/Ledger/` to confirm the production project builds clean against .NET 10 + no framework deps. Success here means a **clean build** (compiles, no errors) — there are no tests to run yet; `src/Ledger` is pure domain code. Test execution doesn't start until Step 6. The build should succeed trivially.
 
 ### Step 5 — Write the smoke test  `[ ]`
 
