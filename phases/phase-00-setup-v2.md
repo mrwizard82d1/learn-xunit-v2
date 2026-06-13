@@ -186,7 +186,7 @@ dotnet test --logger "console;verbosity=detailed"
 
 You should see the test name displayed. `--logger` works here because you're on VSTest, not MTP. (This is the command that didn't exist in the v3 tutorial; here it's standard.)
 
-### Step 7 — Capture decisions  `[ ]`
+### Step 7 — Capture decisions  `[x]`
 
 Update the **Decisions made** section above with the actual versions of `xunit`, `xunit.runner.visualstudio`, and `Microsoft.NET.Test.Sdk` that landed. Future-you will appreciate it.
 
