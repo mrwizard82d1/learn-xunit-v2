@@ -184,7 +184,7 @@ Nothing meaningful. `IClassFixture<T>`, `ICollectionFixture<T>`, `[CollectionDef
 
 The Phase 4 work from v3 ports unchanged: `SeededAccountsFixture`, the marker class, both consuming test classes.
 
-### Step 4.1 — Port the fixture work  `[ ]`
+### Step 4.1 — Port the fixture work  `[x]`
 
 > **Layout correction (2026-06-14, verified against the v3 project).** This is **two files**, not four. In v3, `Fixtures/SeededAccountsFixture.cs` bundles *three* types: the `SeededAccountsFixture` itself, the `SeededAccountsCollection` marker (`[CollectionDefinition("Seeded accounts")]` + `ICollectionFixture<SeededAccountsFixture>`), **and** `AccountInventoryTests` (the second consumer). `AccountInventoryTests` is **not** its own file. So copying these two files brings everything:
 
