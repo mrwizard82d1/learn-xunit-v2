@@ -30,7 +30,7 @@ The exception is Phase 3's serialization story, which is genuinely different in 
 
 Nothing meaningful. xUnit v2.9.3's `[Fact]`, `Assert.Equal`, `Assert.Throws<T>`, `Assert.IsType`, etc. all have the same signatures and semantics as v3. The argument-order convention (`Assert.Equal(expected, actual)`) is identical.
 
-### Step 1.1 — Port the Money tests  `[ ]`
+### Step 1.1 — Port the Money tests  `[x]`
 
 Copy these test files from `~/professional/projects/learn-xunit/tests/Ledger.Tests/` to `~/professional/projects/learn-xunit-v2/tests/Ledger.Tests/`:
 
