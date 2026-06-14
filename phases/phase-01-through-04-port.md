@@ -55,7 +55,7 @@ Copy `CurrencyCodeTests.cs` over. No edits needed. Run; green.
 
 Nothing meaningful. xUnit v2 has the same per-test instance lifecycle, the same constructor-as-setup pattern, `IDisposable.Dispose` as teardown, and `IAsyncLifetime` for async setup/teardown.
 
-### Step 2.1 — Port `AccountRepositoryTests`  `[ ]`
+### Step 2.1 — Port `AccountRepositoryTests`  `[x]`
 
 Copy `AccountRepositoryTests.cs` over. No edits needed. Run; green.
 
