@@ -17,22 +17,36 @@ public class MoneyAddTests
         Assert.IsType<Money>(addend1.Add(addend2));
     }
 
-    public static TheoryData<decimal, decimal, decimal, CurrencyCode> AddCases =>
+    // About to make a v2-specific fix since v2 unit tests **do not** correctly
+    // handle a `CurrencyCode` argument - in a very subtle way.
+    //
+    // Code using `xUnit` v3 correctly handles a type like `CurrencyCode` as an
+    // argument to the templated `TheoryData<>`. Code using `xUnit` v2
+    // **does not** handle this scenario correctly **when run using `dotnet`**.
+    // Running these tests using `dotnet test...`  displays a warning about its
+    // inability to serialize instances of `CurrencyCode` and then prints the 
+    // test results of this test as a **single test**. Rider and `xUnit` v3
+    // correctly recognize the three tests under execution.
+    //
+    // The "fix" for `xUnit` v2 is to only pass arguments of primitive types.
+    public static TheoryData<decimal, decimal, decimal, string> AddCases =>
         new()
         {
-            { 607.37M, 733.74M, 1341.11M, new CurrencyCode("DKK") },
-            { 871.13M, -892.52M, -21.39M, new CurrencyCode("BSD") },
-            { 0M, 913.38M, 913.38M, new CurrencyCode("IQD") },
+            { 607.37M, 733.74M, 1341.11M, "DKK" },
+            { 871.13M, -892.52M, -21.39M, "BSD" },
+            { 0M, 913.38M, 913.38M, "IQD" },
         };
 
     [Theory]
     [MemberData(nameof(AddCases))]
     public void TwoMonies_Add_ProducesExpectedSum(decimal oneAmount, decimal anotherAmount, decimal expectedSum, 
-    CurrencyCode currency)
+    string currencyText)
     {
-        var actual = new Money(oneAmount, currency).Add(new Money(anotherAmount, currency));
+        var actual = new Money(oneAmount, 
+                               new CurrencyCode(currencyText)).Add(new Money(anotherAmount, 
+                                                                             new CurrencyCode(currencyText)));
         
-        Assert.Equal(new Money(expectedSum, currency), actual);
+        Assert.Equal(new Money(expectedSum, new CurrencyCode(currencyText)), actual);
     }
 
     [Fact]
