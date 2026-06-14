@@ -43,7 +43,7 @@ Copy these test files from `~/professional/projects/learn-xunit/tests/Ledger.Tes
 
 The contents need **no edits** for v2. Run `dotnet test`; should be green.
 
-### Step 1.2 — Port `CurrencyCodeTests`  `[ ]`
+### Step 1.2 — Port `CurrencyCodeTests`  `[x]`
 
 Copy `CurrencyCodeTests.cs` over. No edits needed. Run; green.
 
