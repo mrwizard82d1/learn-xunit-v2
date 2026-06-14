@@ -174,6 +174,29 @@ I'd skip this. The decomposed form is more honest about what's actually flowing 
 
 The v3 tutorial's Step 4 also showed a `[ClassData]` form using `TheoryData<Money, Money, Money>`. Same v2 serialization issue applies. If you ported any `[ClassData]` examples, refactor them to the decomposed `TheoryData<decimal, decimal, decimal, string>` shape.
 
+### Why xUnit alone demands this (the architectural "why")  `[ ]`
+
+A reasonable reaction after years of NUnit/JUnit/pytest/etc.: *"I've never had to make test arguments serializable. Why does xUnit?"* It's not a Microsoft-wide mandate — NUnit (also .NET) doesn't require it, and Rider sidesteps it. It comes from **one deliberate design choice**, layered on one platform behavior:
+
+- **VSTest (Microsoft's test platform)** is built around *discover now, run arbitrarily later, possibly in another process.*
+- **xUnit chose** to make every test case — including each parameterized row — a durably, portably addressable entity **whose identity is derived from its actual argument values (serialized).** Almost everyone else identifies cases by **name or index** instead. That single choice is the entire source of the serialization requirement.
+
+**What identity-from-data buys you:**
+
+1. **Run one parameterized case, later, from another process.** "Run just the `DKK` row" means handing a worker process an identity that *reconstructs exactly that row* without re-running discovery — so it must serialize and must encode the data.
+2. **Stable per-combination history — the killer feature.** Because the case ID is a function of the *data*, `{0, 913.38, 913.38, "IQD"}` keeps the **same identity** even as you add, remove, or reorder other rows. CI can legitimately say "this exact combination has failed since build 412." Frameworks that identify by **index** (`#1`, `#2`) lose that the instant you insert a row at the top — every case shifts.
+3. **Re-run-failed-only, parallel sharding, distributed agents** — all enumerate up front and later say "worker 3, run *these* IDs." Same portable-identity requirement.
+
+**Why your prior frameworks never made you think about it:**
+
+- **pytest** assigns each case a *string* node ID (`test_add[DKK]`) and, to run one, **re-collects** in the same invocation and matches the string — no object serialization.
+- **JUnit 5, Go table tests, Jest** identify invocations by **index/display name** and typically run **in-process**, where discovery and execution share memory — nothing crosses a boundary.
+- **NUnit** identifies `[TestCase]`/`[TestCaseSource]` cases by source + index in-process; no round-trip through serialization.
+
+In every one of those, identity is a *name or position*; in xUnit it's a *serialized snapshot of the data*. That's why xUnit is the odd one out — and why "it looks fine in Rider" (which uses its own name/index-style discovery) can hide a collapse that `dotnet test` and VS/VS Code teammates will hit.
+
+**The trade-off, plainly:** xUnit buys precision and stability (per-combination history, reliable cross-process single-case runs, robust parallel/distributed execution, "the case you discovered is the case you run"). The bill: the serialization constraint **leaks into your code** (records need decomposition or `IXunitSerializable`), the collapse is **silent by default**, and *unstable* data (random/time values in rows) gets exposed rather than papered over. pytest/JUnit accept a looser model and a few of their own re-run quirks in exchange for never bothering you about serialization. You weren't missing something for years — you were using frameworks that made the opposite trade-off.
+
 ---
 
 ## Phase 4 — `IClassFixture<T>` and `ICollectionFixture<T>`
@@ -197,7 +220,7 @@ cp ~/professional/projects/learn-xunit/tests/Ledger.Tests/AccountQueryTests.cs t
 
 Note: `AccountScenarioTests.cs` is **not** part of this step — it uses `ITestOutputHelper` + `[Trait]`, which is Phase 5 material. Leave it in v3 for now.
 
-### Step 4.2 — Validate via the breakpoint check  `[ ]`
+### Step 4.2 — Validate via the breakpoint check  `[x]`
 
 Same exercise as v3 Phase 4 Step 5: set a breakpoint in `SeededAccountsFixture`'s constructor, run the full suite, observe the breakpoint hits **once** despite multiple tests using the fixture. Confirms the lifecycle is the same.
 

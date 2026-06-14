@@ -49,7 +49,7 @@ The point is to land on a v2 working knowledge that matches what you'd encounter
 ## Phases
 
 - [x] Phase 0 — Setup (v2)
-- [ ] Phase 1-4 — Port (mechanical; combined doc)
+- [x] Phase 1-4 — Port (mechanical; combined doc)
 - [ ] Phase 5 — Output, traits, skipping (v2)
 - [ ] Phase 6 — Async tests done right
 - [ ] Phase 7 — Custom test data and assertions
