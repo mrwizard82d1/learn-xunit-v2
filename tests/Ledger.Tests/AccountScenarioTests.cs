@@ -26,6 +26,10 @@ public class AccountScenarioTests
         _output.WriteLine($"Opened savings: {savings.Id}");
      
         Assert.True(repo.Contains(checking.Id));
+        // After moving from xUnit v3 "back" to xUnit v2, running a "faux" test
+        // (expected to fail) demonstrated that **both** passing and failing
+        // tests printed the expected "showLiveOutput" result.
+        // Assert.False(repo.Contains(checking.Id));
         Assert.True(repo.Contains(savings.Id));
         
         _output.WriteLine("Both created accounts verified present.");

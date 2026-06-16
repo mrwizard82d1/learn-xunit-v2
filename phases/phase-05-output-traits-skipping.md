@@ -23,6 +23,7 @@ Each is small in isolation. Together they're what makes a test suite *operable* 
 
 - (inherits Phase 0 package decisions + the 1–4 port patterns: smoke-as-canary, `CurrencyCode` for currency, fixture-as-immutable-seed.)
 - **Conditional skip via `Xunit.SkippableFact`** (decided here). v2 has no native runtime skip; the community-standard package fills the gap. Version recorded in Step 6 once it lands.
+- **`showLiveOutput: true` works in v2+VSTest — verified 2026-06-15 (the Phase 0 bet paid off).** Live `[OUTPUT]` lines stream during execution on **passing** tests at *default* verbosity — plain `dotnet test`, no flags. xUnit also prints a captured `Output:` block after `[PASS]`. `--logger "console;verbosity=detailed"` is accepted and adds VSTest's own `Standard Output Messages:` block (and doubles the `[xUnit.net]` diagnostic lines — cosmetic). So live output is available three ways (plain run, `--logger`, failure path); in v3+MTP none worked for passing tests. (Prediction-beat: I'd expected only detailed verbosity to surface it; plain run does.)
 - *(add others as we go)*
 
 ## `v3 ↔ v2` orientation (why this phase feels different)
