@@ -16,6 +16,11 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+      
+    <!-- In v3, I need reference no additional namespace to use 
+    `ITestOutputHelper` because it is in the core `xUnit` namespace. In v2, it 
+    is in a separate namespace. The following line includes this package. -->
+    <Using Include="Xunit.Abstractions" />
   </ItemGroup>
 
   <ItemGroup>

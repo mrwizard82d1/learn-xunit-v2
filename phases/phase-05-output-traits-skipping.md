@@ -33,7 +33,7 @@ In the v3 tutorial, Phase 5 was a story of *broken tooling*: `--show-live-output
 
 ## Steps
 
-### Step 1 — Port `AccountScenarioTests` (smoke + `ITestOutputHelper` scenario)  `[ ]`
+### Step 1 — Port `AccountScenarioTests` (smoke + `ITestOutputHelper` scenario)  `[x]`
 
 The v3 project already has the class this phase is built around. Port it:
 
@@ -48,7 +48,16 @@ No edits needed. Expect green, count **70 → 72**. The file brings three things
 - `ITestOutputHelper` injected via constructor — same DI-via-constructor pattern as fixtures. xUnit supplies it automatically.
 - `OpenSeveralAccounts_QueryEach_AllPresent`, which writes three `_output.WriteLine(...)` lines (Step 2's output demonstration).
 
-`ITestOutputHelper` lives in the `Xunit` namespace, already covered by the project's global `<Using Include="Xunit" />` — no extra `using`.
+**`v3 ↔ v2` gotcha (verified the hard way):** in xUnit **v2**, `ITestOutputHelper` lives in the **`Xunit.Abstractions`** namespace (assembly `xunit.abstractions.dll`), *not* `Xunit`. In v3 it was moved into `Xunit`, so the ported file compiled there on the global `using Xunit` alone — but in v2 that global using doesn't reach it, and the build fails with `'ITestOutputHelper' could not be found`. Fix: add a second global using to `Ledger.Tests.csproj` so every test file is covered:
+
+```xml
+<ItemGroup>
+  <Using Include="Xunit" />
+  <Using Include="Xunit.Abstractions" />
+</ItemGroup>
+```
+
+(Or a per-file `using Xunit.Abstractions;`.) This namespace move is one of the most common surprises when reading v3 docs/blog posts against a v2 codebase.
 
 **NUnit ↔ xUnit:** `Console.WriteLine` in NUnit gets collected and printed under per-test sections. In xUnit it's *captured but invisible* — xUnit refuses to surface raw console output because parallel tests would interleave. `ITestOutputHelper.WriteLine` is the xUnit-correct way to log; the runner knows which test each line belongs to. The API is deliberately tiny: `WriteLine(string)` + a format overload, no `Write` (every call is a whole line).
 
