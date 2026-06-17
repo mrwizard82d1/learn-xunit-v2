@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Ledger.Tests.Fixtures;
 
 namespace Ledger.Tests;
@@ -14,6 +15,7 @@ public class AccountQueryTests
     }
 
     [Fact]
+    [Trait("Category", "Smoke")]
     public void SmokeTest() => Assert.Equal(4, 2 + 2);
 
     [Fact]

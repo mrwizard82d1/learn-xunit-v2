@@ -108,7 +108,7 @@ You should see exactly **one** test run — the tagged smoke. Everything else (i
 
 **NUnit ↔ xUnit:** `[Category("Integration")]` → `[Trait("Category", "Integration")]`. NUnit's `[Category]` is single-valued; `[Trait]` is key-value, so one test can be tagged on multiple orthogonal axes at once (`("Category","Integration")` *and* `("Owner","billing")` *and* `("Speed","slow")`).
 
-### Step 4 — Tag every smoke and build a canary filter (refactor)  `[ ]`
+### Step 4 — Tag every smoke and build a canary filter (refactor)  `[x]`
 
 Add `[Trait("Category", "Smoke")]` to every `SmokeTest()` across the suite. Classes with a smoke: `AccountQueryTests`, `AccountInventoryTests` (inside `Fixtures/SeededAccountsFixture.cs`), `AccountRepositoryTests`, `AccountScenarioTests` (already tagged), `CurrencyCodeTests`, `MoneyAddTests` (its `SmokeTests`), `MoneyConstructorTests`, `MoneyEqualityTests`, `MoneyNegateTests`, `MoneySubtractTests`, `MoneyArithmeticInvariantsTests`, and the standalone `SmokeTest` class. (Rider's Structural Search/Replace can do this in one pass, or walk them manually.)
 
