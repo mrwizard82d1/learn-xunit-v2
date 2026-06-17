@@ -62,7 +62,7 @@ No edits needed. Expect green, count **70 → 72**. The file brings three things
 
 **NUnit ↔ xUnit:** `Console.WriteLine` in NUnit gets collected and printed under per-test sections. In xUnit it's *captured but invisible* — xUnit refuses to surface raw console output because parallel tests would interleave. `ITestOutputHelper.WriteLine` is the xUnit-correct way to log; the runner knows which test each line belongs to. The API is deliberately tiny: `WriteLine(string)` + a format overload, no `Write` (every call is a whole line).
 
-### Step 2 — See live output actually work (the Phase 0 bet pays off)  `[ ]`
+### Step 2 — See live output actually work (the Phase 0 bet pays off)  `[x]`
 
 Back in Phase 0 you set `showLiveOutput: true` in `xunit.runner.json` on the bet that v2+VSTest delivers what v3+MTP couldn't. The smoke test wrote nothing, so you never saw it. `OpenSeveralAccounts_QueryEach_AllPresent` writes three lines — this is where you collect.
 
