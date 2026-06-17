@@ -86,7 +86,7 @@ Record in **Notes & questions**: which command surfaced live output (if any), an
 
 **`v3 ↔ v2` call-out:** in v3 you logged a long list of dead flags (`--show-live-output on`, `-show-output-live`, `showLiveOutput` in json — all broken via MTP, [xunit#3468](https://github.com/xunit/xunit/issues/3468)) and concluded the only reliable surface was the failure path. Here, `--logger` and `console;verbosity=detailed` are standard VSTest and should just work.
 
-### Step 3 — `[Trait]` and CLI filtering (standard VSTest grammar)  `[ ]`
+### Step 3 — `[Trait]` and CLI filtering (standard VSTest grammar)  `[x]`
 
 `[Trait]` is a key-value tag on any test method or class; xUnit assigns no meaning to the names — convention is yours. The ported `AccountScenarioTests.SmokeTest` already carries `[Trait("Category", "Smoke")]`, so you can filter immediately:
 
