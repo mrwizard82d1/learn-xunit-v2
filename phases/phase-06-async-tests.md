@@ -29,6 +29,8 @@ Two differences matter here, both verified against xUnit docs:
 
 (`NUnit ↔ xUnit`: NUnit also runs `async Task` tests and discourages `async void`. NUnit's async `[SetUp]`/`[TearDown]` (Task-returning) map to xUnit's `IAsyncLifetime.InitializeAsync`/`DisposeAsync`. NUnit has no per-test-instance reconstruction, so its setup story differs — see Phase 2.)
 
+> **Background reading (optional aside):** for the bigger picture — C#'s road to `async/await`, F#'s cold `Async` workflows (which predated and inspired it), `task { }`, and the actor model / `MailboxProcessor` — see [`../notes/async-and-concurrency-csharp-vs-fsharp.md`](../notes/async-and-concurrency-csharp-vs-fsharp.md). Not needed to do this phase; it's a durable pointer to the shape of the space.
+
 ## Decisions made
 
 - (inherits all prior phase patterns: smoke-as-canary, TDD red-green, `CurrencyCode`, fixtures, traits.)
