@@ -40,4 +40,16 @@ public class AccountScenarioTests
     {
         Assert.True(false); // never executes because of `Skip`
     }
+
+    [SkippableFact]
+    public void EnvironmentSpecific_SkipsOutsideCi()
+    {
+        Skip.IfNot(Environment.GetEnvironmentVariable("LEDGER_RUN_CI_TESTS") == "true",
+            "Set LEDGER_RUN_CI_TESTS=true to run this environment-specific test.");
+        // Skip.IfNot(Environment.GetEnvironmentVariable("CI") == "true",
+        //     "This test only runs in CI (where the environment is reproducible).");
+        
+        // real body depends on the CI environment
+        Assert.True(true);
+    }
 }

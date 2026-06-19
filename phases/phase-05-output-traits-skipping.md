@@ -22,7 +22,7 @@ Each is small in isolation. Together they're what makes a test suite *operable* 
 ## Decisions made
 
 - (inherits Phase 0 package decisions + the 1–4 port patterns: smoke-as-canary, `CurrencyCode` for currency, fixture-as-immutable-seed.)
-- **Conditional skip via `Xunit.SkippableFact`** (decided here). v2 has no native runtime skip; the community-standard package fills the gap. Version recorded in Step 6 once it lands.
+- **Conditional skip via `Xunit.SkippableFact`** (decided here). v2 has no native runtime skip; the community-standard package fills the gap. **Landed version: 1.5.61.**
 - **Smoke method naming standardized to singular `SmokeTest`** (decided 2026-06-16, before Step 4 tagging). Each smoke is a single `[Fact]`, so the plural `SmokeTests` was a misnomer; the 6 plural ones (the `Money*` files) were renamed. The standalone `SmokeTest.cs` keeps its `ArithmeticSmoke` method — it's the harness-level canary, and a method can't share its enclosing type's name (CS0542) without also renaming the class. **Reserved option ("future draft pick"):** rename that class for full uniformity later if desired.
 - **`showLiveOutput: true` works in v2+VSTest — verified 2026-06-15 (the Phase 0 bet paid off).** Live `[OUTPUT]` lines stream during execution on **passing** tests at *default* verbosity — plain `dotnet test`, no flags. xUnit also prints a captured `Output:` block after `[PASS]`. `--logger "console;verbosity=detailed"` is accepted and adds VSTest's own `Standard Output Messages:` block (and doubles the `[xUnit.net]` diagnostic lines — cosmetic). So live output is available three ways (plain run, `--logger`, failure path); in v3+MTP none worked for passing tests. (Prediction-beat: I'd expected only detailed verbosity to surface it; plain run does.)
 - *(add others as we go)*
@@ -140,7 +140,7 @@ Run `dotnet test`. You should see one test reported as **Skipped** with the reas
 
 **NUnit ↔ xUnit:** `[Ignore("reason")]` → `[Fact(Skip = "reason")]`. Same semantics, same honesty-as-default. Identical in v2 and v3.
 
-### Step 6 — Conditional (runtime) skip with `Xunit.SkippableFact`  `[ ]`
+### Step 6 — Conditional (runtime) skip with `Xunit.SkippableFact`  `[x]`
 
 This is the genuine v2 gap. Sometimes you skip *at runtime* based on a condition (OS, env var, network, optional dependency). **v2 has no native `Assert.Skip*`** — that's a v3-only addition. The v2 answer is the [`Xunit.SkippableFact`](https://github.com/AArnott/Xunit.SkippableFact) package.
 
@@ -157,13 +157,15 @@ Then use `[SkippableFact]` (not `[Fact]`) and the `Skip` helper:
 public void EnvironmentSpecific_SkipsOutsideCi()
 {
     Skip.IfNot(
-        Environment.GetEnvironmentVariable("CI") == "true",
-        "This test only runs in CI (where the environment is reproducible).");
+        Environment.GetEnvironmentVariable("LEDGER_RUN_CI_TESTS") == "true",
+        "Set LEDGER_RUN_CI_TESTS=true to run this environment-specific test.");
 
-    // ... real body that depends on the CI environment ...
+    // ... real body that depends on the environment ...
     Assert.True(true);
 }
 ```
+
+> **Don't gate on `CI` itself (lesson learned 2026-06-19).** The obvious variable name is `CI`, but `CI` is a *magic* variable the whole toolchain reacts to: setting `CI=true` makes the .NET CLI detect a CI environment, **disable its terminal logger, and drop to minimal verbosity** — so `dotnet test` printed the build lines and then **swallowed the entire test summary** (no pass/fail output at all). The test ran fine; the result was just invisible. Using a dedicated, non-magic variable (`LEDGER_RUN_CI_TESTS`) gives the identical skip mechanic with clean, normal output. If you *must* gate on `CI` (e.g. to mirror real CI behavior), force visible results with `--logger "console;verbosity=detailed"` and/or check the exit code (`; echo $?`).
 
 `Skip` API: `Skip.If(condition, "reason")` skips when true; `Skip.IfNot(condition, "reason")` skips when false (the common "skip unless prerequisite met" form). `[SkippableTheory]` exists for theories. `SkippableFactAttribute` is in the `Xunit` namespace (global using covers it).
 
@@ -173,11 +175,13 @@ Verify both branches:
 
 ```bash
 dotnet test --filter "FullyQualifiedName~EnvironmentSpecific"
-# Skipped: "This test only runs in CI..."
+# total: 1, skipped: 1   (var unset → Skip.IfNot fires; [SKIP] + reason shown)
 
-CI=true dotnet test --filter "FullyQualifiedName~EnvironmentSpecific"
-# Runs (and passes)
+LEDGER_RUN_CI_TESTS=true dotnet test --filter "FullyQualifiedName~EnvironmentSpecific"
+# total: 1, succeeded: 1  (condition met → body runs, clean terminal-logger output)
 ```
+
+Both verified 2026-06-19.
 
 **`v3 ↔ v2` call-out:** in v3 this is native — `Assert.Skip("…")`, `Assert.SkipWhen(cond, "…")`, `Assert.SkipUnless(cond, "…")`, no package. The mapping is `Skip.IfNot` ⇄ `Assert.SkipUnless`, `Skip.If` ⇄ `Assert.SkipWhen`. If you migrate a v2 suite to v3 later, you delete the `Xunit.SkippableFact` package, swap `[SkippableFact]`→`[Fact]`, and replace `Skip.*`→`Assert.Skip*`.
 
