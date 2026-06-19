@@ -144,6 +144,8 @@ Run `dotnet test`. You should see one test reported as **Skipped** with the reas
 
 This is the genuine v2 gap. Sometimes you skip *at runtime* based on a condition (OS, env var, network, optional dependency). **v2 has no native `Assert.Skip*`** — that's a v3-only addition. The v2 answer is the [`Xunit.SkippableFact`](https://github.com/AArnott/Xunit.SkippableFact) package.
 
+> **It's a third-party add-on, not official xUnit.** The `Xunit.` prefix is just a naming convention — NuGet doesn't reserve the `Xunit.*` namespace, so it implies nothing about ownership. `Xunit.SkippableFact` is authored/maintained by **Andrew Arnott (`AArnott`)** in a separate repo with its own release cadence; the official xUnit packages are `xunit`, `xunit.core`, `xunit.assert`, `xunit.abstractions`, `xunit.runner.visualstudio` (xUnit team / .NET Foundation). It's reputable and widely used, but community-maintained. It works *on top of* xUnit's extensibility (a custom `[SkippableFact]` attribute + discoverer that translates `SkipException` into a Skipped result) — which is exactly why the attribute is mandatory; core v2 doesn't understand `Skip.*`. **Day-job implications:** you take on a single-maintainer dependency (watch its compatibility as you bump `xunit` 2.9.x), and it disappears on a v3 migration (native `Assert.Skip*` replaces it). A real entry in the v2-vs-v3 ledger: v2 needs a third-party package for something v3 ships in the box.
+
 Add it (record the landed version in Decisions):
 
 ```bash
@@ -187,14 +189,32 @@ Both verified 2026-06-19.
 
 **NUnit ↔ xUnit:** NUnit's `Assert.Ignore("reason")` is the closest equivalent — skip-at-runtime with honest reporting.
 
-### Step 7 — NUnit↔xUnit reflection  `[ ]`
+### Step 7 — NUnit↔xUnit reflection  `[x]`
 
 In **Notes & questions** below, capture:
 
 - How often you reached for `Console.WriteLine` in NUnit, and whether `ITestOutputHelper` feels heavier-but-cleaner or just heavier — *and* whether seeing live output finally work (Step 2) changes that.
+ 
+    I have historically reached for `Console.WriteLine` if I could not determine the issue from inspection. I can 
+  see some of the value of `ITestOutputHelper` but it seems to require "much magic" to complete what `Console.
+  Writeline` does simply (and typically temporarily). A useful tool, but I need to understand when it is the tool 
+  "to reach for."
+
 - Whether `[Trait]`'s key-value form buys you anything over NUnit's single-valued `[Category]`.
+
+    I can again see some value in `[Trait]` but I have found limited use for these limited tests in practice. I want 
+  to test all the code. I've only found value in a small number of specific scenarios. For example, a "slow test" 
+  that requires specific and perhaps complicated setup that I only want to run on the actual build system and only 
+  occasionally (for example, just prior to a "major" (feature?) check-in).
+  
 - Whether xUnit's "Skipped is a real outcome" philosophy matches how you treated ignored tests in NUnit, or whether you tended to delete-and-forget.
+
+    I have historically treated "Skipped" as a "test aberration"; I may do it, but I want to fix it as soon as 
+  possible. 
+
 - The `Xunit.SkippableFact`-vs-native-`Assert.Skip*` split: does needing a package for conditional skip bother you enough to weigh in a v2-vs-v3 decision at work?
+
+    No. I'm willing to use another package to achieve this goal.
 
 ---
 
