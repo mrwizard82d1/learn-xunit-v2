@@ -122,7 +122,7 @@ dotnet test --filter "Category=Smoke"
 
 Other axes worth knowing (don't add yet): `Category=Slow` for >1s tests (`--filter "Category!=Slow"` for fast local runs), `Category=Integration` (Phase 9), `Owner=…` for larger teams. Trait *names* are conventional, not enforced — pick what gives useful filters; don't over-engineer.
 
-### Step 5 — Unconditional skip with `[Fact(Skip = "…")]`  `[ ]`
+### Step 5 — Unconditional skip with `[Fact(Skip = "…")]`  `[x]`
 
 Add to `AccountScenarioTests`:
 

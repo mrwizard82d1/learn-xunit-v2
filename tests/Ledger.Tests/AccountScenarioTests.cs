@@ -34,4 +34,10 @@ public class AccountScenarioTests
         
         _output.WriteLine("Both created accounts verified present.");
     }
+
+    [Fact(Skip = "Demonstration - not a real test")]
+    public void IntentionallySkipped_DemonstratesSkipBehavior()
+    {
+        Assert.True(false); // never executes because of `Skip`
+    }
 }
