@@ -39,7 +39,7 @@ Two differences matter here, both verified against xUnit docs:
 
 ## Candidate test list (Kent Beck style — check off / edit as we go)
 
-- [ ] `AsyncStoreTests.SmokeTest` — canary for the new class
+- [x] `AsyncStoreTests.SmokeTest` — canary for the new class
 - [ ] `SaveThenGetAsync_ReturnsSameAccount` — basic `async Task` fact
 - [ ] (observe) an `async void` version — see v2 run it, note v3 wouldn't
 - [ ] `GetRequiredAsync_MissingId_ThrowsAsync` — `Assert.ThrowsAsync<KeyNotFoundException>`
@@ -50,7 +50,7 @@ Two differences matter here, both verified against xUnit docs:
 
 ## Steps
 
-### Step 1 — Per-class smoke for `AsyncStoreTests`  `[ ]`
+### Step 1 — Per-class smoke for `AsyncStoreTests`  `[x]`
 
 Canary first, per the standing pattern. Create `tests/Ledger.Tests/AsyncStoreTests.cs`:
 
