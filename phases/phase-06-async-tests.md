@@ -122,6 +122,15 @@ The signature is **`async Task`**, not `async void`. xUnit sees the returned `Ta
 
 To see a real red first (optional but in the spirit): stub `GetAsync` to `return null;` (after the `await`), watch the test fail on the assertion, then restore the real lookup → green.
 
+> **A `Task` is *hot*, not a thunk — and the compiler, not the name, enforces async.** Worth pinning down, because it's the conceptual heart of async:
+>
+> - **Awaitable vs. required.** `Task`/`Task<T>` are *awaitable* (they have `GetAwaiter()`), but awaiting is **not required** by the compiler — you may ignore a Task, stash it, await it later, or never (an unawaited async call inside an `async` method warns: CS4014). Awaiting is how you get the *result*, observe *exceptions*, and *sequence* — not a syntax rule.
+> - **The compiler enforces async via the *type*, not the name.** `var x = store.GetAsync(id);` makes `x` a `Task<Account?>` — **not** an `Account?`. Use `x` as an `Account?` and it won't compile; you're forced to `await` (or `.Result`) to unwrap. Rename `GetAsync` → `DoInterestingStuff` and the rule is identical — the `Async` suffix is a *readability convention for humans*, never the enforcement mechanism. So an interface returning `Task<T>` is an honest abstraction barrier at the *type* level: it hides the *mechanism* (real async vs. sync-over-Task vs. CPU work) but cannot hide the *shape*.
+> - **Hot, not a thunk.** A *thunk* (Lisp `(fn [] …)`, Clojure `delay`, F# `Async<'T>`) is **cold/deferred** — nothing runs until you force it. A C# `Task` is the **opposite — hot/eager**: it represents an operation *already running or finished* the moment it exists. `await` doesn't *start* it; it *waits for* it. So "create a Task that doesn't need awaiting" is a category error — every Task can be *ignored*, but you can't get its value as a `T` without `await`/`.Result`, because its *type* is `Task<T>`.
+> - **If you want cold (a value computed on demand, no await ceremony), you don't want a `Task`:** `T` (eager value), `Lazy<T>` (lazy, memoized), `Func<T>` (a thunk), `Func<Task<T>>` (a *deferred* async op — a thunk that starts a Task when invoked), or F#'s native cold `Async<'T>`. The bridge is symmetric: **cold = `() => hot`** (wrap a hot Task in a function to defer it), **hot = `run(cold)`**.
+>
+> See [`../notes/async-and-concurrency-csharp-vs-fsharp.md`](../notes/async-and-concurrency-csharp-vs-fsharp.md) → *"Hot vs cold: futures across languages"* for how other languages choose hot or cold by default.
+
 ### Step 3 — The `async void` trap (v2 runs it; v3 wouldn't)  `[ ]`
 
 Temporarily add an `async void` version to feel the difference:

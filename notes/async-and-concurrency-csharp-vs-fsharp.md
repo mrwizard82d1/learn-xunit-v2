@@ -108,6 +108,81 @@ Clojure is worth a section because it's the most *intentional* of these language
 
 **Net:** where F# says "immutability + actors + async," Clojure says "immutability + *pick the reference type that matches your coordination need* + STM for the coordinated case + core.async for CSP." It's the same anti-shared-mutable-state instinct, expressed as a richer, more explicitly-classified toolkit — and the only one here that treats coordinated multi-identity updates as a first-class, lock-free, transactional problem. (Clojure also has the full JVM underneath: `future`, `promise`, `pmap`, `java.util.concurrent`.)
 
+## Hot vs cold: futures across languages
+
+The single most clarifying axis for an "async value" type — and the one that surprises people coming from C# — is **when does the work start?**
+
+- **Hot / eager** — *creating* the future *starts* the work. Construction **is** execution. You hold a handle to something already in flight.
+- **Cold / lazy** — the future is a **description** that does nothing until you explicitly run it. Like an ordinary function: inert until invoked.
+
+The counterintuitive bit: **cold is the "normal," function-like, referentially-transparent model** — a value you can pass around and compose *without* triggering anything, run once at the edge. **Hot is the odd one out**: merely *constructing* it has a side effect (it starts running), which breaks referential transparency. The functional camp considers hot futures a wart for exactly this reason; the imperative camp likes them because "call it and it just goes" is ergonomic.
+
+Where the mainstream **future-value types** land *by default*:
+
+| Language / type | Default | Notes |
+|---|---|---|
+| **C# `Task` / `Task<T>`** | **hot** | runs on creation; `await` only *waits*. |
+| **JavaScript `Promise`** | **hot** | `new Promise(exec)` runs `exec` immediately; an `async` fn starts on call. |
+| **Scala `Future`** | **hot** | schedules on an `ExecutionContext` at creation. |
+| **Java `CompletableFuture` / `Future`** | **hot** | `supplyAsync` / `submit` start running. |
+| **Rust `Future`** | **cold** | *"futures are lazy"* — do nothing until polled/`.await`ed or spawned. A deliberate reaction against hot futures. |
+| **F# `Async<'T>`** | **cold** | a description; `Async.RunSynchronously` / `Start` to run. (F# 6 `task {}` opts into **hot** for .NET interop.) |
+| **Kotlin `suspend`** | **cold** | runs when a coroutine builder (`launch`/`async`) drives it. |
+| **Python `async def` coroutine** | **cold** | calling it returns an un-started coroutine; `await` / `asyncio.create_task` (→ hot `Task`) runs it. |
+| **Cats Effect `IO` / ZIO (Scala)** | **cold** | referentially-transparent effect values; run at the "end of the world." |
+| **Haskell `IO`** | **cold** | effects are *values*; `main` runs them. |
+| **Clojure** | **both** | `(delay …)` cold (thunk, forced with `@`); `(future …)` hot (thread pool, now); `promise` a write-once cell. One language, both, explicitly named. |
+
+**Two camps, their trade-offs:**
+
+- **Hot (C#, JS, Scala `Future`, Java):** ergonomic — "make it, await it." Costs: construction isn't pure (a side effect), you can't *re-run* one (re-create it instead → which is *why* retry/poll APIs take a `Func<Task<T>>`, not a `Task<T>`), and cancellation/resource-safety are bolted on.
+- **Cold (Rust, F# `Async`, Cats Effect/ZIO, Haskell, Kotlin):** referentially transparent — a future is a *value* you compose freely; trivial retry (run it again); first-class composable cancellation and resource safety. Costs: needs a runtime/executor, more ceremony, and the classic beginner gotcha — *"why isn't my future running?"* (Rust newcomers hit this constantly).
+
+**The bridge is symmetric** — hot and cold inter-convert by adding/removing a function wrapper:
+
+- **cold = `() => hot`** — wrap a hot future in a thunk to defer it: C# `Func<Task<T>>`, JS `() => fetch(…)`. This is why retry/scheduling APIs want a *factory*, not a started task.
+- **hot = `run(cold)`** — execute a cold description: `Async.StartAsTask`, ZIO/`IO` `unsafeRun*`, Rust `tokio::spawn`.
+
+So cold/hot isn't alien to general CS — it's the familiar *"a function is inert until invoked"* idea applied to async work. Hot futures are the special case that fused "construct" and "invoke" for convenience; everything else recovers laziness by re-introducing a function boundary.
+
+### A different category: processes & coroutines (Go, core.async, Erlang/Elixir)
+
+Hot/cold is really a property of *future-value* types. **Go goroutines, Clojure core.async `go` blocks, and Erlang/Elixir processes are not future-values at all** — they're *lightweight processes / coroutines* (the CSP and actor families). They don't hand back an awaitable handle; results travel over **channels** (CSP) or **messages** to a mailbox (actors). The only question that translates — "is it launched eagerly?" — answers uniformly **hot**:
+
+- **Go** — `go f()` launches *now* (M:N green-thread scheduler); result returns via a **channel**.
+- **Clojure core.async** — `(go …)` schedules on the core.async pool *now* and returns a **channel** for the result; cooperative *parking* via `<!`/`>!`. (The `go` macro is the same CPS/state-machine rewrite as `async/await` — userland, via macros.)
+- **Erlang/Elixir** — `spawn` / `Task.async` start a process *immediately* (preemptive BEAM, isolated heaps); results arrive as **messages**. (Elixir's `Task.async` + `Task.await` is the one future-shaped convenience — a *hot* handle, much like C# `Task`.)
+
+"Cold" for these is simply *a function you haven't spawned yet* (`() => spawn(...)`) — the same bridge. Their scheduling differs (Go: M:N green threads; core.async: cooperative coroutines; BEAM: preemptive isolated processes), but that's orthogonal to hot/cold. The clean way to hold it: **future-values** answer "when does the *value's* work start?" (hot/cold); **processes/coroutines** answer "how do independent activities *communicate*?" (channels/messages) — and are spawned hot.
+
+## Reactive streams (Rx): async *sequences* of values over time
+
+Everything above is about *one* async value (a future) or *communicating processes*. **Reactive** supplies the missing shape: **zero-to-many values arriving asynchronously over time** — an async *stream*.
+
+**The core duality (Erik Meijer; Rx's origin at Microsoft).** `IObservable<T>`/`IObserver<T>` is the precise mathematical **dual of `IEnumerable<T>`/`IEnumerator<T>`** — flip pull into push:
+- `IEnumerable<T>` — **pull**: the consumer asks for the next item (`MoveNext`).
+- `IObservable<T>` — **push**: the producer pushes items to subscribers (`OnNext`…, then `OnCompleted`/`OnError`) as they arrive.
+
+So Rx is **"LINQ over time"** — the same `Select`/`Where`/`Merge`/`Throttle`/`Buffer` combinators over a push stream. A `Task<T>` is the degenerate case: a stream of exactly one value (`task.ToObservable()`; convert back with `await obs` / `FirstAsync()`). The *pull*-based cousin in modern C# is **`IAsyncEnumerable<T>`** (C# 8, `await foreach`) — an async stream you pull; Rx is the push version.
+
+**Hot vs cold — same axis, and this is where the terms were born:**
+- **Cold observable** — starts producing *on subscribe*; each subscriber gets its own independent run (an HTTP call, `Observable.Interval`).
+- **Hot observable** — produces *regardless* of subscribers; you see values only from when you subscribe (mouse events, a `Subject`, a price feed). `Publish()`/`RefCount()` convert cold → hot-shared.
+
+**Why it let you "ignore threads" (your architecture).** Rx abstracts concurrency behind **`IScheduler`**. You compose the whole pipeline thread-agnostically, then inject threading *declaratively at the edges*: `SubscribeOn(scheduler)` (where the source work runs) and `ObserveOn(scheduler)` (where downstream notifications are delivered — e.g. `ObserveOn(uiScheduler)` to marshal back to the UI thread). That's precisely "threads only at the lowest level": operators don't care what thread they're on; you state threading once, at composition edges. **Testability bonus:** a `TestScheduler` gives you *virtual time* — fire "5 seconds later" deterministically in a unit test without waiting.
+
+**Honest caveats:**
+- **Backpressure.** Push-based Rx has no built-in flow control for fast-producer/slow-consumer. The JVM world answered with the **Reactive Streams** spec (`Publisher`/`Subscriber` + `request(n)`) — Project Reactor, Akka Streams, RxJava `Flowable`. In .NET, reach for `IAsyncEnumerable` or bounded `System.Threading.Channels` when backpressure matters.
+- **"Everything is a stream" overreach.** Rx shines for event/UI/sensor/feed data and composing-throttling-merging async events; forcing one-shot request/response through it is ceremony, and debugging deep push pipelines is harder than stepping imperative code.
+
+**Two meanings of "reactive" worth separating** (you said "reactive systems," described Rx):
+- **Reactive *programming*** — Rx/observables/dataflow: the *programming model* (what you used).
+- **Reactive *Systems*** — the *Reactive Manifesto* (responsive, resilient, elastic, **message-driven**): an *architecture* stance that overlaps the actor section above (Akka), not specifically Rx.
+
+**Cross-language:** the **ReactiveX** family — RxJS, RxJava, RxSwift, Rx.NET (`System.Reactive`); **Project Reactor** (`Mono`/`Flux`, Spring WebFlux) and **Akka Streams** on the JVM; the academic root is **FRP** (Conal Elliott & Paul Hudak's *Fran*, 1997; later Elm).
+
+**Where it fits the toolbox:** Rx is the **stream layer** — the async-*many* counterpart to Task's async-*one*. It composes with everything: a `Task` is a one-element observable; an Rx pipeline can sit over a channel or an actor's output; and `ObserveOn` is how it stays thread-agnostic until the edges. The trade-off your team made — adopt it early and architecturally — is what pays off: Rx rewards being the *spine* of the data flow, not a spot fix.
+
 ## Pointers (where the depth lives)
 
 - Herb Sutter, **"The Free Lunch Is Over"** (Dr. Dobb's Journal, 2005) — the multicore inflection point.
@@ -119,6 +194,7 @@ Clojure is worth a section because it's the most *intentional* of these language
 - C. A. R. Hoare, **"Communicating Sequential Processes"** (CACM, 1978) — the theory behind channels; embodied in **Go** (goroutines/channels) and **.NET `System.Threading.Channels`**.
 - The **.NET green-threads experiment** (dotnet/runtime, ~2023) and write-up on why it wasn't pursued — the road not taken vs. Java's Project Loom.
 - Rich Hickey talks — **"Are We There Yet?"** and **"The Value of Values"** (identity/state/value, the epochal time model) — plus the Clojure docs on **refs/STM, atoms, agents** and the **`core.async`** announcement (2013).
+- Erik Meijer, **Rx / "Your Mouse Is a Database"** (the `IEnumerable`↔`IObservable` duality) and **ReactiveX** (reactivex.io); the **Reactive Manifesto** (2014) and **Reactive Streams** spec (backpressure). FRP roots: Conal Elliott & Paul Hudak, **"Functional Reactive Animation"** (1997); **Elm**.
 
 ## Tie-back to the tutorial
 
