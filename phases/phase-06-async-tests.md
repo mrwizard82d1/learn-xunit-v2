@@ -143,7 +143,7 @@ To see a real red first (optional but in the spirit): stub `GetAsync` to `return
 >
 > **Async-specific catch:** the classic C# `bool TryGet(out Account)` escape hatch is **unavailable** in async (no `out` parameters on `async` methods), so async *forces* you to pick one of the above. The rule of thumb: choose by whether absence is **expected** (nullable / `Option`) or **exceptional** (throw). This phase ends up showing three of them side by side — nullable (`GetAsync`), throw (`GetRequiredAsync`, Step 4), and `Option` (optional step) — which is itself the lesson.
 
-### Step 3 — The `async void` trap (v2 runs it; v3 wouldn't)  `[x]`
+### Step 3 — The `async void` trap (v2 runs it; v3 wouldn't)  `[ ]`
 
 Temporarily add an `async void` version to feel the difference:
 

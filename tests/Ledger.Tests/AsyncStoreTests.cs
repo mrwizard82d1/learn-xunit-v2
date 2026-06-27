@@ -17,13 +17,4 @@ public class AsyncStoreTests
         
         Assert.Equal(account, fetched);
     }
-    
-    // DO NOT DO THIS!
-    [Fact]
-    public async void SaveThenGet_AsyncVoid_DoNotDoThis()
-    {
-        var store = new InMemoryAccountStore();
-        await store.SaveAsync(new Account("acc-x", new Money(1M, new CurrencyCode("USD"))));
-        Assert.NotNull(await store.GetAsync("acc-x"));
-    }
 }
