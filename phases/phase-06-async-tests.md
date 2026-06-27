@@ -35,12 +35,14 @@ Two differences matter here, both verified against xUnit docs:
 
 - (inherits all prior phase patterns: smoke-as-canary, TDD red-green, `CurrencyCode`, fixtures, traits.)
 - **Introduce a minimal async seam** (`IAccountStore` + `InMemoryAccountStore`) rather than fake async on the sync `AccountRepository`. The in-memory impl uses `await Task.Yield()` at the boundary to be *genuinely* asynchronous (forces a continuation) rather than sync-over-`Task` (`Task.FromResult`) — so the tests actually exercise awaiting. Labeled a stand-in for real I/O; **kept** (reused in Phase 9). *(Revisit if it feels like scope creep — alternative is a thin async service wrapper over the existing repo.)*
-- **Write the v2 `IAsyncLifetime` (`Task`) form.** *(add package/version decisions if any arise — none expected; async needs no extra packages.)*
+- **Write the v2 `IAsyncLifetime` (`Task`) form.**
+- **`GetAsync` uses `GetValueOrDefault(id)`** (not the `TryGetValue ? : ` ternary) — same single lookup, cleaner, returns `Account?`. Caveat: collapses "absent" and "present-but-default," which is fine here (Accounts are never null/default-stored).
+- **LanguageExt example pinned to `LanguageExt.Core` 4.4.9, test-project only** (the optional Step 4½). v5 is stable-but-still-beta with breaking changes (traits/higher-kinds; `OptionAsync` no longer awaitable) and matches fewer existing tutorials, so v4 for now. The production domain stays `LanguageExt`-free; nullable→`Option` conversion happens at the test boundary.
 
 ## Candidate test list (Kent Beck style — check off / edit as we go)
 
 - [x] `AsyncStoreTests.SmokeTest` — canary for the new class
-- [ ] `SaveThenGetAsync_ReturnsSameAccount` — basic `async Task` fact
+- [x] `SaveThenGetAsync_ReturnsSameAccount` — basic `async Task` fact
 - [ ] (observe) an `async void` version — see v2 run it, note v3 wouldn't
 - [ ] `GetRequiredAsync_MissingId_ThrowsAsync` — `Assert.ThrowsAsync<KeyNotFoundException>`
 - [ ] `AsyncSeededStoreFixture` (`IAsyncLifetime`) seeds via `await SaveAsync(...)`; prove `InitializeAsync` runs **once**
@@ -95,7 +97,7 @@ public sealed class InMemoryAccountStore : IAccountStore
     public async Task<Account?> GetAsync(string id)
     {
         await Task.Yield();
-        return _accounts.TryGetValue(id, out var account) ? account : null;
+        return _accounts.GetValueOrDefault(id);   // Account? — null if absent (see Decisions)
     }
 }
 ```
@@ -130,6 +132,16 @@ To see a real red first (optional but in the spirit): stub `GetAsync` to `return
 > - **If you want cold (a value computed on demand, no await ceremony), you don't want a `Task`:** `T` (eager value), `Lazy<T>` (lazy, memoized), `Func<T>` (a thunk), `Func<Task<T>>` (a *deferred* async op — a thunk that starts a Task when invoked), or F#'s native cold `Async<'T>`. The bridge is symmetric: **cold = `() => hot`** (wrap a hot Task in a function to defer it), **hot = `run(cold)`**.
 >
 > See [`../notes/async-and-concurrency-csharp-vs-fsharp.md`](../notes/async-and-concurrency-csharp-vs-fsharp.md) → *"Hot vs cold: futures across languages"* for how other languages choose hot or cold by default.
+
+> **Representing "not found" in an *async* API — a design fork.** `GetAsync` returns `Task<Account?>`. The `?` (Nullable Reference Types, enabled in this project) makes absence *part of the type* and compiler-checked — null is surfaced, not a hidden landmine. But `null` is still a meaningless bottom value (absent? error? uninitialized?). The menu of ways to say "maybe no account":
+> | Strategy | Shape | Absence is… |
+> |---|---|---|
+> | **Nullable (NRT)** | `Task<Account?>` | *ordinary* — idiomatic, zero-dependency, compiler-*nudged*. *(what we use)* |
+> | **Throw** | `Task<Account>` that throws | *exceptional* — see `GetRequiredAsync`, Step 4. |
+> | **`Option<T>`** | `Task<Option<Account>>` | *a value you must handle* — no null; LanguageExt; optional step after Step 4. |
+> | **`Result`/`Either`** | `Task<Result<Account, NotFound>>` | *carries why*. |
+>
+> **Async-specific catch:** the classic C# `bool TryGet(out Account)` escape hatch is **unavailable** in async (no `out` parameters on `async` methods), so async *forces* you to pick one of the above. The rule of thumb: choose by whether absence is **expected** (nullable / `Option`) or **exceptional** (throw). This phase ends up showing three of them side by side — nullable (`GetAsync`), throw (`GetRequiredAsync`, Step 4), and `Option` (optional step) — which is itself the lesson.
 
 ### Step 3 — The `async void` trap (v2 runs it; v3 wouldn't)  `[ ]`
 
@@ -187,6 +199,56 @@ public async Task GetRequiredAsync_MissingId_ThrowsAsync()
 ```
 
 **The critical detail:** you must `await Assert.ThrowsAsync(...)`, and the lambda returns the `Task` (no `await` inside the lambda — hand the task to `ThrowsAsync`). If you mistakenly use the **sync** `Assert.Throws<T>(() => store.GetRequiredAsync("nope"))`, it captures the *creation* of the task, not its faulted completion — the exception happens later, on the continuation, and the assertion passes for the wrong reason (or fails confusingly). Sync assert + async method = silent wrongness; that's the thing to internalize.
+
+### Step 4½ — (Optional) Absence as a *value*: LanguageExt `Option`  `[ ]`
+
+Optional, and complementary to your separate LanguageExt tutorial — this isn't core to async testing; it's the third absence strategy (from the Step 2 callout) made concrete, so all three sit side by side. Keep `LanguageExt` in the **test project only**; the production domain stays null-based and dependency-free. Conversion happens *at the boundary* — the real clean-architecture pattern: nullable (BCL-shaped) in, `Option` out.
+
+Add the package to the **test** project:
+
+```bash
+dotnet add tests/Ledger.Tests package LanguageExt.Core --version 4.4.9
+```
+
+(Pinned to v4, not v5 — see Decisions.) A boundary wrapper — new file `tests/Ledger.Tests/AccountStoreOptionExtensions.cs`:
+
+```csharp
+using LanguageExt;
+using static LanguageExt.Prelude;
+
+namespace Ledger.Tests;
+
+public static class AccountStoreOptionExtensions
+{
+    // Account? → Option<Account> at the edge: Some if present, None if null.
+    public static async Task<Option<Account>> GetOptionAsync(this IAccountStore store, string id) =>
+        Optional(await store.GetAsync(id));
+}
+```
+
+`Optional(x)` lifts a possibly-null reference into `Some(x)` / `None`; `using static LanguageExt.Prelude;` brings `Optional`, `Some`, `None` into scope. Test — note you *cannot* null-deref an `Option`; you must `Match` (or `IfNone`) to extract, so handling absence is a **compile-time obligation**, not a warning:
+
+```csharp
+[Fact]
+public async Task GetOptionAsync_PresentVsAbsent()
+{
+    var store = new InMemoryAccountStore();
+    var account = new Account("acc-1", new Money(100M, new CurrencyCode("USD")));
+    await store.SaveAsync(account);
+
+    Option<Account> hit  = await store.GetOptionAsync("acc-1");
+    Option<Account> miss = await store.GetOptionAsync("nope");
+
+    Assert.True(hit.IsSome);
+    Assert.True(miss.IsNone);
+
+    // Absence is folded, not null-checked — both branches required to extract:
+    Assert.Equal(account.Balance.ToString(), hit.Match(Some: a => a.Balance.ToString(), None: () => "none"));
+    Assert.Equal("none",                     miss.Match(Some: a => a.Balance.ToString(), None: () => "none"));
+}
+```
+
+Run → green; suite +1. **The point:** three signatures now sit side by side — `Task<Account?>` (maybe, nullable), `Task<Account>`-that-throws (required), `Task<Option<Account>>` (maybe, as a value). `Option` makes "you must handle absence" a *compile-time* requirement via `Match`; nullable only *nudges* via warnings you can suppress. Your other LanguageExt tutorial goes deeper (`Either`/`Result`, `Map`/`Bind` pipelines, traversal) — here it's purely the absence-as-value contrast.
 
 ### Step 5 — Async setup/teardown with `IAsyncLifetime`  `[ ]`
 
