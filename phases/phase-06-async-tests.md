@@ -67,7 +67,7 @@ public class AsyncStoreTests
 
 Run `dotnet test`. One new green (suite 74 → 75; smoke filter 12 → 13). Tagging the smoke keeps the canary set complete (Phase 5 Step 4 convention).
 
-### Step 2 — Introduce the async seam and the first `async Task` fact  `[ ]`
+### Step 2 — Introduce the async seam and the first `async Task` fact  `[x]`
 
 TDD, and mind the "compile errors aren't valid red" rule: create the production types *first* (so it compiles), but leave the impl returning a wrong/empty result so the **assertion** fails as a real red.
 

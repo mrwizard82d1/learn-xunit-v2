@@ -19,6 +19,6 @@ public sealed class InMemoryAccountStore : IAccountStore
     public async Task<Account?> GetAsync(string id)
     {
         await Task.Yield();
-        return null; // deliberate stub that forces a red test
+        return _accounts.TryGetValue(id, out var account) ? account : null;
     }
 }
