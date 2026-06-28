@@ -17,4 +17,12 @@ public class AsyncStoreTests
         
         Assert.Equal(account, fetched);
     }
+
+    [Fact]
+    public async Task GetRequiredAsync_MissingId_ThrowsAsync()
+    {
+        var store = new InMemoryAccountStore();
+        
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => store.GetRequiredAsync("nope"));
+    }
 }

@@ -198,7 +198,13 @@ public async Task GetRequiredAsync_MissingId_ThrowsAsync()
 }
 ```
 
-**The critical detail:** you must `await Assert.ThrowsAsync(...)`, and the lambda returns the `Task` (no `await` inside the lambda — hand the task to `ThrowsAsync`). If you mistakenly use the **sync** `Assert.Throws<T>(() => store.GetRequiredAsync("nope"))`, it captures the *creation* of the task, not its faulted completion — the exception happens later, on the continuation, and the assertion passes for the wrong reason (or fails confusingly). Sync assert + async method = silent wrongness; that's the thing to internalize.
+**The critical detail:** you must `await Assert.ThrowsAsync(...)`, and the lambda hands the `Task` to `ThrowsAsync` (no `await` inside the lambda). The conceptual reason is the `Task`-handle lesson again: a faulted async method puts its exception on the task's *completion/continuation*, so only whoever **awaits** the task can catch it.
+
+> **And xUnit makes both common mistakes *build errors*, not silent wrongness (verified 2026-06-21).** Earlier drafts of this step claimed the wrong form "passes for the wrong reason / silent wrongness." That's false — xUnit guards it twice over (compiler obsolete-error *and* analyzer):
+> - **Sync `Assert.Throws<T>(() => store.GetRequiredAsync("nope"))`** → `CS0619`: *"'Assert.Throws<T>(Func<Task>)' is obsolete. You must call Assert.ThrowsAsync<T> (and await the result)…"* — xUnit ships a dedicated `Func<Task>` overload marked `[Obsolete(error: true)]` precisely to make this a compile error. Plus analyzer **xUnit2014** (*"Do not use Assert.Throws() to check for asynchronously thrown exceptions; use Assert.ThrowsAsync"*).
+> - **Dropped `await`** — `Assert.ThrowsAsync<T>(…)` with no `await` → analyzer **xUnit2021** (error: *"Assert.ThrowsAsync is async. The resulting task should be awaited…"*), plus compiler **CS4014** (unawaited async call → a test that can never fail).
+>
+> So you can't *ship* either mistake. The only path to genuine runtime silence is a contrived void-discard lambda — `() => { store.GetRequiredAsync("nope"); }` — which binds to the `Action` overload, fire-and-forgets the task, and then fails confusingly (no synchronous exception) while the real exception goes unobserved. The lesson stands — *the exception lives on the task* — but the tooling makes forgetting it loud.
 
 ### Step 4½ — (Optional) Absence as a *value*: LanguageExt `Option`  `[ ]`
 
